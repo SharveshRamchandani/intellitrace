@@ -31,7 +31,12 @@ MONTH_ABBREVS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 async def get_supplier_profile(
     db: AsyncSession, supplier_id: str
 ) -> SupplierProfileResponse | None:
-    supplier = await db.get(Supplier, supplier_id)
+    import uuid as _uuid
+    try:
+        uid = _uuid.UUID(supplier_id)
+    except ValueError:
+        return None
+    supplier = await db.get(Supplier, uid)
     if not supplier:
         return None
 

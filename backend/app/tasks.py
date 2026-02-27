@@ -113,15 +113,37 @@ async def _score_invoice(invoice_id: str) -> dict:
             po = await db.get(PurchaseOrder, invoice.po_id)
             po_amount = float(po.po_amount) if po else None
 
-        # ── 4. Build graph ────────────────────────────────────────────────────
-        graph = SupplyChainGraph()
-        graph.add_invoice(
-            invoice_id=invoice.id,
-            supplier_id=str(supplier.id),
-            buyer_id=str(invoice.buyer_id),
-            lender_id=str(invoice.lender_id) if invoice.lender_id else None,
-            tier=supplier.tier_level,
+        # ── 4. Build graph from ALL invoices for this supplier ─────────────────
+        # (needed for cycle/carousel and cascade detection across history)
+        all_inv_stmt = (
+            select(Invoice)
+            .where(Invoice.supplier_id == supplier.id)
         )
+        all_inv_result = await db.execute(all_inv_stmt)
+        all_supplier_invoices = all_inv_result.scalars().all()
+
+        graph = SupplyChainGraph()
+
+        # Add all historical invoices from this supplier
+        for hist_inv in all_supplier_invoices:
+            graph.add_invoice(
+                invoice_id=hist_inv.id,
+                supplier_id=str(supplier.id),
+                buyer_id=str(hist_inv.buyer_id),
+                lender_id=str(hist_inv.lender_id) if hist_inv.lender_id else None,
+                tier=supplier.tier_level,
+            )
+
+        # Also ensure the current invoice is in the graph
+        if not any(i.id == invoice.id for i in all_supplier_invoices):
+            graph.add_invoice(
+                invoice_id=invoice.id,
+                supplier_id=str(supplier.id),
+                buyer_id=str(invoice.buyer_id),
+                lender_id=str(invoice.lender_id) if invoice.lender_id else None,
+                tier=supplier.tier_level,
+            )
+
         graph_features = graph.extract_features_for_supplier(str(supplier.id))
 
         # ── 5. Feature engineering ────────────────────────────────────────────

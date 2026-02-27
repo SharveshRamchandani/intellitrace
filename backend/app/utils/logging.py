@@ -25,7 +25,7 @@ def setup_logging(debug: bool = False) -> None:
             structlog.stdlib.PositionalArgumentsFormatter(),
             structlog.processors.TimeStamper(fmt="iso"),
             structlog.processors.StackInfoRenderer(),
-            structlog.processors.format_exc_info,
+            structlog.processors.ExceptionRenderer(),
             structlog.processors.UnicodeDecoder(),
             structlog.processors.JSONRenderer() if not debug
             else structlog.dev.ConsoleRenderer(colors=True),

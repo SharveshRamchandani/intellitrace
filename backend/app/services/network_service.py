@@ -71,9 +71,11 @@ async def get_network_graph(db: AsyncSession) -> NetworkResponse:
     for n in raw_nodes:
         raw_id = n["id"][2:]  # strip "s_" / "b_"
         if n["type"] == "supplier":
-            label = suppliers.get(raw_id, type("", (), {"name": raw_id})()).name  # type: ignore
+            sup_obj = suppliers.get(raw_id)
+            label = sup_obj.name if sup_obj else raw_id
         else:
-            label = buyers.get(raw_id, type("", (), {"name": raw_id})()).name  # type: ignore
+            buyer_obj = buyers.get(raw_id)
+            label = buyer_obj.name if buyer_obj else raw_id
         nodes.append(NetworkNode(
             id=n["id"], label=label, type=n["type"],
             risk=n["risk"], x=n["x"], y=n["y"],
